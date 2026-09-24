@@ -3,6 +3,7 @@ import type GUI from 'lil-gui'
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import type Experience from '../Experience'
 import Keyboard from '../utils/Keyboard'
+import PlasticMaterial from '../materials/PlasticMaterial'
 
 const UP = new THREE.Vector3(0, 1, 0)
 
@@ -16,20 +17,20 @@ export default class Robot {
 
     public params = {
 
-        mass: 1, 
+        mass: 1,
         acceleration: 14,
         maxSpeed: 9,
-        grip: 1.6, 
+        grip: 1.6,
         slowDown: 1.6,
-        turnSpeed: 4, 
+        turnSpeed: 4,
 
-        tilt: 0.025, 
-        tiltResponse: 5, 
+        tilt: 0.025,
+        tiltResponse: 5,
 
         hoverHeight: 2.5,
         bobAmplitude: 0.03,
         bobSpeed: 0.1,
-        sway: 0.6, 
+        sway: 0.6,
     }
 
 
@@ -41,18 +42,11 @@ export default class Robot {
 
     public controllable = true
 
-    // Tilts with the physics. Holds the glb model, centered on the pivot.
     private body = new THREE.Group()
     private model: THREE.Group
     private keyboard = new Keyboard()
-    // private headlight: THREE.PointLight
-
-    // Base values of the headlight (the pulse is applied on top of `intensity` every frame).
-    // public lightParams = {
-    //     color: '#cfe9ff',
-    //     intensity: 14,
-    //     pulse: 0.15, // 0 = steady, 0.3 = strong breathing synced with the hover
-    // }
+    public plastic = new PlasticMaterial()
+    public others = new PlasticMaterial('others')
 
     private input = new THREE.Vector3()
     private acceleration = new THREE.Vector3()
@@ -66,13 +60,11 @@ export default class Robot {
     constructor(experience: Experience) {
         const gltf = experience.ressources.items['robot'] as GLTF
         this.model = gltf.scene
-        // Helper cylinder left in the export (wraps the whole robot, no material)
         this.model.getObjectByName('Cylinder')?.removeFromParent()
+        this.applyMaterials()
 
-        // The glb origin is at its feet: recenter it so it tilts around its middle
         const center = new THREE.Box3().setFromObject(this.model).getCenter(new THREE.Vector3())
         this.model.position.sub(center)
-        // The model faces +Z, the robot moves toward -Z
         this.model.rotation.y = Math.PI
         this.model.position.x *= -1
         this.model.position.z *= -1
@@ -80,12 +72,23 @@ export default class Robot {
         this.body.add(this.model)
         this.group.add(this.body)
 
-        // In the group, not the body: it follows position + heading but not the tilt.
-        // this.headlight = new THREE.PointLight(this.lightParams.color, this.lightParams.intensity, 0, 2)
-        // this.headlight.position.set(0, 0.3, -0.8)
-        // this.group.add(this.headlight)
 
         this.group.position.set(0, this.params.hoverHeight, 0)
+    }
+
+    private applyMaterials() {
+        const materials: Record<string, THREE.Material> = {
+            Base: this.plastic.create('Base', '#d9c7a8'),
+            BaseAlt: this.plastic.create('BaseAlt', '#c8643c'),
+            BaseBlack: this.plastic.create('BaseBlack', '#2b2b2b'),
+        }
+        this.others.uniforms.edgeRampPos.value = 0.42
+        const others = this.others.create('others', '#d9c7a8')
+
+        const swap = (material: THREE.Material) => materials[material.name] ?? others
+        this.model.traverse((child) => {
+            if (child instanceof THREE.Mesh) child.material = Array.isArray(child.material) ? child.material.map(swap) : swap(child.material)
+        })
     }
 
     public update(delta: number, elapsed: number, camera: THREE.Camera) {
@@ -181,14 +184,8 @@ export default class Robot {
         hover.add(this.params, 'bobSpeed', 0, 8, 0.01)
         hover.add(this.params, 'sway', 0, 5, 0.01)
 
-        // const light = folder.addFolder('headlight')
-        // light.addColor(this.lightParams, 'color').onChange((hex: string) => this.headlight.color.set(hex))
-        // light.add(this.lightParams, 'intensity', 0, 100, 0.1)
-        // light.add(this.headlight, 'distance', 0, 30, 0.1)
-        // light.add(this.headlight, 'decay', 0, 4, 0.01)
-        // light.add(this.headlight.position, 'y', -1, 3, 0.01).name('offsetY')
-        // light.add(this.headlight.position, 'z', -3, 1, 0.01).name('offsetZ')
-        // light.add(this.lightParams, 'pulse', 0, 0.5, 0.01)
+        this.plastic.debug(folder)
+        this.others.debug(folder)
 
         return folder
     }
@@ -201,7 +198,7 @@ export default class Robot {
             const materials = Array.isArray(child.material) ? child.material : [child.material]
             for (const material of materials) material.dispose()
         })
-        // this.headlight.dispose()
+
         this.group.removeFromParent()
     }
 }
