@@ -1,5 +1,7 @@
 import * as THREE from 'three/webgpu'
 import type GUI from 'lil-gui'
+import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import type Experience from '../Experience'
 import Keyboard from '../utils/Keyboard'
 
 const UP = new THREE.Vector3(0, 1, 0)
@@ -24,7 +26,7 @@ export default class Robot {
         tilt: 0.025, 
         tiltResponse: 5, 
 
-        hoverHeight: 2,
+        hoverHeight: 2.5,
         bobAmplitude: 0.03,
         bobSpeed: 0.1,
         sway: 0.6, 
@@ -39,8 +41,18 @@ export default class Robot {
 
     public controllable = true
 
-    private body: THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardNodeMaterial>
+    // Tilts with the physics. Holds the glb model, centered on the pivot.
+    private body = new THREE.Group()
+    private model: THREE.Group
     private keyboard = new Keyboard()
+    // private headlight: THREE.PointLight
+
+    // Base values of the headlight (the pulse is applied on top of `intensity` every frame).
+    // public lightParams = {
+    //     color: '#cfe9ff',
+    //     intensity: 14,
+    //     pulse: 0.15, // 0 = steady, 0.3 = strong breathing synced with the hover
+    // }
 
     private input = new THREE.Vector3()
     private acceleration = new THREE.Vector3()
@@ -51,12 +63,27 @@ export default class Robot {
     private pitch = 0
     private roll = 0
 
-    constructor() {
-        this.body = new THREE.Mesh(
-            new THREE.BoxGeometry(1, 1, 1),
-            new THREE.MeshStandardNodeMaterial({ color: '#4f8cff', roughness: 0.4 }),
-        )
+    constructor(experience: Experience) {
+        const gltf = experience.ressources.items['robot'] as GLTF
+        this.model = gltf.scene
+        // Helper cylinder left in the export (wraps the whole robot, no material)
+        this.model.getObjectByName('Cylinder')?.removeFromParent()
+
+        // The glb origin is at its feet: recenter it so it tilts around its middle
+        const center = new THREE.Box3().setFromObject(this.model).getCenter(new THREE.Vector3())
+        this.model.position.sub(center)
+        // The model faces +Z, the robot moves toward -Z
+        this.model.rotation.y = Math.PI
+        this.model.position.x *= -1
+        this.model.position.z *= -1
+
+        this.body.add(this.model)
         this.group.add(this.body)
+
+        // In the group, not the body: it follows position + heading but not the tilt.
+        // this.headlight = new THREE.PointLight(this.lightParams.color, this.lightParams.intensity, 0, 2)
+        // this.headlight.position.set(0, 0.3, -0.8)
+        // this.group.add(this.headlight)
 
         this.group.position.set(0, this.params.hoverHeight, 0)
     }
@@ -123,6 +150,8 @@ export default class Robot {
         this.roll += (targetRoll - this.roll) * smoothing
         this.body.rotation.set(this.pitch, 0, this.roll)
 
+        // this.headlight.intensity = this.lightParams.intensity * (1 + Math.sin(elapsed * params.bobSpeed) * this.lightParams.pulse)
+
         this.stats.speed = speed
 
         this.stats.stopTime = Math.log(10) * params.mass / params.slowDown
@@ -130,8 +159,7 @@ export default class Robot {
 
     public debug(gui: GUI) {
         const folder = gui.addFolder('robot')
-        const colorProxy = { color: `#${this.body.material.color.getHexString()}` }
-        folder.addColor(colorProxy, 'color').onChange((hex: string) => this.body.material.color.set(hex))
+        folder.add(this.model.rotation, 'y', -Math.PI, Math.PI, 0.01).name('modelRotationY')
 
         const movement = folder.addFolder('movement')
         movement.add(this.params, 'mass', 0.1, 5, 0.01).name('mass (lightness)')
@@ -153,13 +181,27 @@ export default class Robot {
         hover.add(this.params, 'bobSpeed', 0, 8, 0.01)
         hover.add(this.params, 'sway', 0, 5, 0.01)
 
+        // const light = folder.addFolder('headlight')
+        // light.addColor(this.lightParams, 'color').onChange((hex: string) => this.headlight.color.set(hex))
+        // light.add(this.lightParams, 'intensity', 0, 100, 0.1)
+        // light.add(this.headlight, 'distance', 0, 30, 0.1)
+        // light.add(this.headlight, 'decay', 0, 4, 0.01)
+        // light.add(this.headlight.position, 'y', -1, 3, 0.01).name('offsetY')
+        // light.add(this.headlight.position, 'z', -3, 1, 0.01).name('offsetZ')
+        // light.add(this.lightParams, 'pulse', 0, 0.5, 0.01)
+
         return folder
     }
 
     public dispose() {
         this.keyboard.dispose()
-        this.body.geometry.dispose()
-        this.body.material.dispose()
+        this.model.traverse((child) => {
+            if (!(child instanceof THREE.Mesh)) return
+            child.geometry.dispose()
+            const materials = Array.isArray(child.material) ? child.material : [child.material]
+            for (const material of materials) material.dispose()
+        })
+        // this.headlight.dispose()
         this.group.removeFromParent()
     }
 }

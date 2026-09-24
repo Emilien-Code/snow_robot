@@ -5,6 +5,7 @@ import type { Source } from '../utils/Ressources'
 //      { name: 'color', type: 'texture', path: ['color.jpg'] }
 const sources: Source[] = [
     { name: 'snow_normal', type: 'texture', path: ['snow_field_aerial_nor_gl_2k.png'] },
+    { name: 'robot', type: 'GLTFModel', path: ['robot.glb'] },
 ]
 
 export default sources
