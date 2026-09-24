@@ -1,4 +1,5 @@
 import * as THREE from 'three/webgpu'
+import { Inspector } from 'three/addons/inspector/Inspector.js'
 import type Experience from '../Experience'
 
 export default class Renderer {
@@ -11,7 +12,6 @@ export default class Renderer {
     constructor(experience: Experience) {
         this.experience = experience
 
-        // Uses WebGPU when available, falls back to WebGL2 otherwise.
         this.instance = new THREE.WebGPURenderer({
             canvas: experience.canvas,
             antialias: true,
@@ -21,6 +21,14 @@ export default class Renderer {
         this.instance.shadowMap.type = THREE.PCFSoftShadowMap
         this.instance.setClearColor(0x111111, 1)
         this.resize()
+
+        if (experience.helpers.active) {
+            const inspector = new Inspector()
+            this.instance.inspector = inspector
+            window.addEventListener('keydown', (event) => {
+                if (event.key.toLowerCase() === 'h') inspector.setVisible(!inspector.getVisible())
+            })
+        }
 
         this.instance.init().then(() => {
             this.initialized = true

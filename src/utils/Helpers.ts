@@ -9,6 +9,8 @@ export default class Helpers {
     constructor() {
         this.active = import.meta.env.DEV || window.location.hash.includes('debug')
         this.GUI = new GUI()
+        
+        Object.assign(this.GUI.domElement.style, { left: '15px', right: 'auto', zIndex: '999' })
         this.GUI.show(this.active)
 
         window.addEventListener('hashchange', () => {

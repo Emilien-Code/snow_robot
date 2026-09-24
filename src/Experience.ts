@@ -29,6 +29,8 @@ export default class Experience {
 
         this.sizes.on('resize', () => this.resize())
         this.time.on('tick', () => this.update())
+
+        this.renderer.instance.setAnimationLoop(() => this.time.tick())
         this.ressources.on('ready', () => {
             this.world = new CubeWorld(this)
         })

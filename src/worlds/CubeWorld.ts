@@ -73,7 +73,7 @@ export default class CubeWorld extends World {
         /**
          * ROBOT
          */
-        this.robot = new Robot()
+        this.robot = new Robot(this.experience)
         this.robot.bounds.set(FLOOR_SIZE / 2 - 2, FLOOR_SIZE / 2 - 2)
         scene.add(this.robot.group)
 
@@ -130,6 +130,19 @@ export default class CubeWorld extends World {
         })
         fogFolder.add(fog, 'near', 0, 100, 0.1)
         fogFolder.add(fog, 'far', 0, 200, 0.1)
+
+        const lightsFolder = gui.addFolder('lights')
+        const lightsProxy = {
+            ambientColor: `#${ambient.color.getHexString()}`,
+            directionalColor: `#${directional.color.getHexString()}`,
+        }
+        lightsFolder.addColor(lightsProxy, 'ambientColor').onChange((hex: string) => ambient.color.set(hex))
+        lightsFolder.add(ambient, 'intensity', 0, 3, 0.01).name('ambientIntensity')
+        lightsFolder.addColor(lightsProxy, 'directionalColor').onChange((hex: string) => directional.color.set(hex))
+        lightsFolder.add(directional, 'intensity', 0, 10, 0.01).name('directionalIntensity')
+        lightsFolder.add(directional.position, 'x', -20, 20, 0.1).name('directionalX')
+        lightsFolder.add(directional.position, 'y', 0, 20, 0.1).name('directionalY')
+        lightsFolder.add(directional.position, 'z', -20, 20, 0.1).name('directionalZ')
 
     }
 

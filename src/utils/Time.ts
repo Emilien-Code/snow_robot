@@ -7,17 +7,11 @@ export default class Time extends EventEmitter {
     public elapsed = 0
     public delta = 16
 
-    constructor() {
-        super()
-        requestAnimationFrame(() => this.tick())
-    }
-
-    private tick() {
+    public tick() {
         const now = Date.now()
         this.delta = now - this.current
         this.current = now
         this.elapsed = now - this.start
         this.trigger('tick')
-        requestAnimationFrame(() => this.tick())
     }
 }
