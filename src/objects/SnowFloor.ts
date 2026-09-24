@@ -15,7 +15,9 @@ import {
     div,
     add,
     normalLocal,
-    cross
+    cross,
+    mix,
+    mx_noise_float
 } from 'three/tsl'
 
 type StorageTextureNode = ReturnType<typeof storageTexture>
@@ -37,6 +39,10 @@ export default class SnowFloor {
     private uniforms = {
         thickness: uniform(0.3),
         safe: uniform(1),
+        // Roughness varies with a noise so some places look frozen (shinier)
+        roughnessFrozen: uniform(0.3),
+        roughnessSnow: uniform(0.9),
+        roughnessNoiseFrequency: uniform(0.3),
     }
 
     // Depth pass (what digs into the snow, seen from below)
@@ -93,8 +99,21 @@ export default class SnowFloor {
     private createMaterial() {
         const material = new THREE.MeshStandardNodeMaterial({
             normalMap: this.createNormalTexture(),
-            roughness: 0.5,
         })
+
+        const roughness = Fn(() => {
+            // mx_noise_float returns roughly [-1, 1], remapped to [0, 1]
+            const noise = mx_noise_float(positionLocal.xy.mul(this.uniforms.roughnessNoiseFrequency))
+                .mul(0.5)
+                .add(0.5)
+                .clamp()
+
+            return mix(this.uniforms.roughnessFrozen, this.uniforms.roughnessSnow, noise)
+        })()
+        material.roughnessNode = roughness
+
+        // Debug: roughness displayed in the red channel
+        // material.colorNode = vec3(roughness, 0, 0)
 
         material.positionNode = Fn(() => {
             const newPosition = positionLocal.toVar()
@@ -234,7 +253,9 @@ export default class SnowFloor {
         const material = this.mesh.material
         const materialProxy = { color: `#${material.color.getHexString()}`, normalStrength: material.normalScale.x }
         folder.addColor(materialProxy, 'color').onChange((hex: string) => material.color.set(hex))
-        folder.add(material, 'roughness', 0, 1, 0.01)
+        folder.add(this.uniforms.roughnessFrozen, 'value', 0, 1, 0.01).name('roughnessFrozen')
+        folder.add(this.uniforms.roughnessSnow, 'value', 0, 1, 0.01).name('roughnessSnow')
+        folder.add(this.uniforms.roughnessNoiseFrequency, 'value', 0.01, 5, 0.01).name('roughnessNoiseFrequency')
         folder.add(material, 'metalness', 0, 1, 0.01)
         folder.add(materialProxy, 'normalStrength', 0, 3, 0.01).onChange((value: number) => {
             material.normalScale.setScalar(value)
