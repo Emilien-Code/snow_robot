@@ -1,3 +1,8 @@
+/**
+ * Inspiration: https://threejs.org/examples/?q=rain#webgpu_compute_particles_rain
+ */
+
+
 import * as THREE from 'three/webgpu'
 import type GUI from 'lil-gui'
 import type Experience from '../Experience'
@@ -20,18 +25,9 @@ import {
     cross,
 } from 'three/tsl'
 
-// Objects on this layer are seen by the collision camera (the rain stops on them)
 export const RAIN_COLLISION_LAYER = 1
-// The rain lives on its own layer so the other passes (snow depth, collision) never see it
 const RAIN_LAYER = 2
 
-/**
- * GPU rain following a center (the robot).
- *
- * Collision: the colliders are rendered from above into a render target storing their
- * world position (alpha = 1 where something was hit). Each drop reads the height under it:
- * below it, the drop respawns at the top. Where nothing was hit, the drop falls to the ground.
- */
 export default class Rain {
 
     public mesh: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardNodeMaterial>
@@ -39,7 +35,6 @@ export default class Rain {
     private experience: Experience
     private params = {
         count: 1000,
-        // Size of the box of rain around the center
         width: 10,
         height: 25,
         dropWidth: 0.1,
@@ -164,7 +159,6 @@ export default class Rain {
         const u = this.uniforms
 
         const geometry = new THREE.PlaneGeometry(dropWidth, 1)
-        // The drop position is the front tip of the streak, so it's the tip that touches the ground
         geometry.translate(0, 0.5, 0)
 
         const material = new THREE.MeshStandardNodeMaterial({
