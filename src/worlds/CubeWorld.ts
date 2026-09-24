@@ -4,6 +4,7 @@ import World from '../classes/World'
 import Robot from '../objects/Robot'
 import Rock from '../objects/Rock'
 import SnowFloor from '../objects/SnowFloor'
+import Rain from '../objects/Rain'
 const FOG_COLOR = '#ffffff'
 const FLOOR_SIZE = 100
 
@@ -12,6 +13,7 @@ export default class CubeWorld extends World {
     private floor: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardNodeMaterial>
     private rock: Rock
     private snowFloor: SnowFloor
+    private rain: Rain
 
     private grid: THREE.GridHelper
     private robot: Robot
@@ -78,6 +80,14 @@ export default class CubeWorld extends World {
         scene.add(this.robot.group)
 
 
+        /**
+         * RAIN
+         */
+        this.rain = new Rain(this.experience, (xz) => this.snowFloor.heightAt(xz))
+        this.rain.addCollider(this.robot.group)
+        scene.add(this.rain.mesh)
+
+
 
 
 
@@ -118,6 +128,7 @@ export default class CubeWorld extends World {
         const robotFolder = this.robot.debug(gui)
         const tunnelFolder = this.rock.debug(gui)
         this.snowFloor.debug(gui)
+        this.rain.debug(gui)
 
         robotFolder.add(this.cameraParams, 'followSpeed', 0.5, 20, 0.1).name('cameraFollow')
 
@@ -167,6 +178,7 @@ export default class CubeWorld extends World {
 
 
         this.snowFloor.update()
+        this.rain.update(delta, this.robot.group.position)
     }
 
     dispose() {
@@ -175,6 +187,7 @@ export default class CubeWorld extends World {
         this.grid.dispose()
         this.grid.removeFromParent()
         this.robot.dispose()
+        this.rain.dispose()
         this.lights.removeFromParent()
         // this.disposeObject(this.tunnel.mesh)
         scene.fog = null

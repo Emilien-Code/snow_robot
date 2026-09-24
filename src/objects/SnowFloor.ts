@@ -10,6 +10,7 @@ import {
     storageTexture,
     instanceIndex,
     uvec2,
+    vec2,
     vec3,
     min,
     div,
@@ -139,6 +140,15 @@ export default class SnowFloor {
         })()
 
         return material
+    }
+
+    /**
+     * World height of the snow surface at a world XZ position (footprints included)
+     */
+    public heightAt(xz: THREE.Node<'vec2'>) {
+        // The mesh is rotated -90° on X: local (x, y) = world (x, -z)
+        const local = vec2(xz.x, xz.y.negate())
+        return this.snowElevation(local).add(this.params.elevation - 0.3)
     }
 
     private snowElevation(position: THREE.Node<'vec2'>) {
