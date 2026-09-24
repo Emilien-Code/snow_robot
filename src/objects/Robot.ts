@@ -13,30 +13,31 @@ export default class Robot {
     public velocity = new THREE.Vector3()
 
     public params = {
-        // Movement
-        mass: 1, // lightness: heavier = slower to speed up AND slower to stop
-        acceleration: 14, // thrust while a key is held
+
+        mass: 1, 
+        acceleration: 14,
         maxSpeed: 9,
-        grip: 1.6, // air drag while a key is held: higher = tighter turns, less sliding
-        slowDown: 1.6, // air drag once keys are released: higher = stops sooner
-        turnSpeed: 4, // how fast it faces its direction
+        grip: 1.6, 
+        slowDown: 1.6,
+        turnSpeed: 4, 
 
-        // Leaning
-        tilt: 0.025, // how much it leans into the acceleration
-        tiltResponse: 5, // how fast it reaches that lean
+        tilt: 0.025, 
+        tiltResponse: 5, 
 
-        // Hovering
-        hoverHeight: 1.6,
-        bobAmplitude: 0.12,
-        bobSpeed: 2,
-        sway: 1, // idle wobble while floating
+        hoverHeight: 2,
+        bobAmplitude: 0.03,
+        bobSpeed: 0.1,
+        sway: 0.6, 
     }
 
-    // Read-only values shown in the debug panel.
+
     public stats = { speed: 0, stopTime: 0 }
 
-    // Limits of the flyable area (x: tunnel half width, z: tunnel half length).
+
     public bounds = new THREE.Vector2(3, 95)
+
+
+    public controllable = true
 
     private body: THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardNodeMaterial>
     private keyboard = new Keyboard()
@@ -68,19 +69,19 @@ export default class Robot {
         this.right.crossVectors(this.forward, UP).normalize()
 
         this.input.set(0, 0, 0)
-        if (this.keyboard.isDown('z', 'arrowup')) this.input.add(this.forward)
-        if (this.keyboard.isDown('s', 'arrowdown')) this.input.sub(this.forward)
-        if (this.keyboard.isDown('d', 'arrowright')) this.input.add(this.right)
-        if (this.keyboard.isDown('q', 'arrowleft')) this.input.sub(this.right)
-        // Diagonals are not faster
+        if (this.controllable && this.keyboard.isDown('z', 'arrowup')) this.input.add(this.forward)
+        if (this.controllable && this.keyboard.isDown('s', 'arrowdown')) this.input.sub(this.forward)
+        if (this.controllable && this.keyboard.isDown('d', 'arrowright')) this.input.add(this.right)
+        if (this.controllable && this.keyboard.isDown('q', 'arrowleft')) this.input.sub(this.right)
+
         if (this.input.lengthSq() > 0) this.input.normalize()
 
-        // --- Physics (forces divided by mass: a lighter robot reacts to everything faster)
+
         const { params } = this
         const thrusting = this.input.lengthSq() > 0
         this.acceleration.copy(this.input).multiplyScalar(params.acceleration / params.mass)
         this.velocity.addScaledVector(this.acceleration, delta)
-        // Exponential drag: frame-rate independent, gives the slow glide to a stop
+
         const drag = (thrusting ? params.grip : params.slowDown) / params.mass
         this.velocity.multiplyScalar(Math.exp(-drag * delta))
         this.velocity.clampLength(0, params.maxSpeed)
@@ -88,7 +89,7 @@ export default class Robot {
         const position = this.group.position
         position.addScaledVector(this.velocity, delta)
 
-        // Soft bounce on the tunnel limits
+
         if (Math.abs(position.x) > this.bounds.x) {
             position.x = Math.sign(position.x) * this.bounds.x
             this.velocity.x *= -0.3
@@ -98,22 +99,22 @@ export default class Robot {
             this.velocity.z *= -0.3
         }
 
-        // Hovering: slow, irregular bobbing
+
         const bob = Math.sin(elapsed * params.bobSpeed) + Math.sin(elapsed * params.bobSpeed * 1.65) * 0.4
         position.y = params.hoverHeight + bob * params.bobAmplitude
 
-        // --- Orientation
+
         const speed = Math.hypot(this.velocity.x, this.velocity.z)
         if (speed > 0.3) {
-            // Turn toward where it is going (forward is -Z), along the shortest way
+
             const targetYaw = Math.atan2(-this.velocity.x, -this.velocity.z)
             const deltaYaw = THREE.MathUtils.euclideanModulo(targetYaw - this.yaw + Math.PI, Math.PI * 2) - Math.PI
             this.yaw += deltaYaw * (1 - Math.exp(-params.turnSpeed * delta))
         }
         this.group.rotation.y = this.yaw
 
-        // Lean into the acceleration, expressed in the robot's own frame:
-        // nose down when speeding up, banking when turning.
+
+
         this.localAcceleration.copy(this.acceleration).applyAxisAngle(UP, -this.yaw)
         const targetPitch = this.localAcceleration.z * params.tilt + Math.sin(elapsed * 1.7) * 0.03 * params.sway
         const targetRoll = -this.localAcceleration.x * params.tilt + Math.sin(elapsed * 1.3) * 0.04 * params.sway
@@ -123,7 +124,7 @@ export default class Robot {
         this.body.rotation.set(this.pitch, 0, this.roll)
 
         this.stats.speed = speed
-        // Time to lose 90% of its speed after releasing the keys
+
         this.stats.stopTime = Math.log(10) * params.mass / params.slowDown
     }
 
