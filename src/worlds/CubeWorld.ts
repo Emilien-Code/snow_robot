@@ -2,6 +2,7 @@ import * as THREE from 'three/webgpu'
 import type Experience from '../Experience'
 import World from '../classes/World'
 import Robot from '../objects/Robot'
+import RockTunnel from '../objects/Rock'
 
 const FOG_COLOR = '#0b0c0f'
 const FLOOR_SIZE = 100
@@ -25,32 +26,65 @@ export default class CubeWorld extends World {
         scene.background = new THREE.Color(FOG_COLOR)
         scene.fog = new THREE.Fog(FOG_COLOR, 10, 55)
 
-        // Classic grid floor: a flat plane + a grid of lines 1 unit apart
+
+        /**
+         * FLOOR
+         */
         this.floor = new THREE.Mesh(
             new THREE.PlaneGeometry(FLOOR_SIZE, FLOOR_SIZE),
             new THREE.MeshStandardNodeMaterial({ color: '#2a2d33', roughness: 0.9 }),
         )
-        // PlaneGeometry is vertical (XY): lay it down on XZ
-        this.floor.rotation.x = -Math.PI / 2
-        scene.add(this.floor)
 
+        this.floor.rotation.x = -Math.PI / 2
+        // scene.add(this.floor)
+
+
+        const rock = new RockTunnel()
+        scene.add(rock.mesh)
+
+
+        /**
+         * GRID
+         */
         this.grid = new THREE.GridHelper(FLOOR_SIZE, FLOOR_SIZE, '#6b7585', '#40464f')
         // Slightly above the floor to avoid z-fighting (flickering between two surfaces at the same height)
         this.grid.position.y = 0.001
         scene.add(this.grid)
 
+        
+        
+        /**
+         * ROBOT
+         */
         this.robot = new Robot()
         this.robot.bounds.set(FLOOR_SIZE / 2 - 2, FLOOR_SIZE / 2 - 2)
         scene.add(this.robot.group)
 
+
+
+
+
+
+
+
+
+        /**
+         * Lights (random)
+         */
+
         this.lights = new THREE.Group()
-        const ambient = new THREE.AmbientLight('#8fa3c0', 0.25)
+        const ambient = new THREE.AmbientLight('#f3ede8', 0.25)
         const directional = new THREE.DirectionalLight('#ffe9d0', 1.2)
         directional.position.set(3, 4, 2)
         this.lights.add(ambient, directional)
         scene.add(this.lights)
 
-        // Camera behind the robot, never below the floor
+
+
+
+        /**
+         * Camera
+         */
         const { instance: camera, controls } = experience.camera
         camera.position.set(0, 3.2, 7.5)
         controls.target.copy(this.robot.group.position)
@@ -58,9 +92,17 @@ export default class CubeWorld extends World {
         controls.maxDistance = 12
         this.followTarget.copy(controls.target)
 
+
+
+        /**
+         * Debug
+         */
         const gui = experience.helpers.GUI
         const robotFolder = this.robot.debug(gui)
+        const tunnelFolder = rock.debug(gui)
+
         robotFolder.add(this.cameraParams, 'followSpeed', 0.5, 20, 0.1).name('cameraFollow')
+        
     }
 
     update() {
@@ -68,7 +110,11 @@ export default class CubeWorld extends World {
         const delta = Math.min(time.delta * 0.001, 0.05)
         const elapsed = time.elapsed * 0.001
 
+        this.robot.controllable = !camera.params.free
         this.robot.update(delta, elapsed, camera.instance)
+
+        // Free (debug) camera: leave it alone
+        if (camera.params.free) return
 
         // The camera follows with a bit of lag (and ignores the bobbing): feels like floating.
         const target = camera.controls.target
@@ -85,6 +131,7 @@ export default class CubeWorld extends World {
         this.grid.removeFromParent()
         this.robot.dispose()
         this.lights.removeFromParent()
+        // this.disposeObject(this.tunnel.mesh)
         scene.fog = null
         scene.background = null
     }
