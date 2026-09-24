@@ -40,7 +40,6 @@ export default class SnowFloor {
     private uniforms = {
         thickness: uniform(0.3),
         safe: uniform(1),
-        // Roughness varies with a noise so some places look frozen (shinier)
         roughnessFrozen: uniform(0.3),
         roughnessSnow: uniform(0.9),
         roughnessNoiseFrequency: uniform(0.3),
@@ -313,6 +312,6 @@ export default class SnowFloor {
 
     private setOwnVisibility(visible: boolean) {
         this.mesh.visible = visible
-        if (this.debugPlane) this.debugPlane.visible = visible
+        if (this.debugPlane) this.debugPlane.visible = false
     }
 }
