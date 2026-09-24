@@ -2,14 +2,17 @@ import * as THREE from 'three/webgpu'
 import type Experience from '../Experience'
 import World from '../classes/World'
 import Robot from '../objects/Robot'
-import RockTunnel from '../objects/Rock'
-
-const FOG_COLOR = '#0b0c0f'
+import Rock from '../objects/Rock'
+import SnowFloor from '../objects/SnowFloor'
+const FOG_COLOR = '#ffffff'
 const FLOOR_SIZE = 100
 
 export default class CubeWorld extends World {
     private experience: Experience
     private floor: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardNodeMaterial>
+    private rock: Rock
+    private snowFloor: SnowFloor
+
     private grid: THREE.GridHelper
     private robot: Robot
     private lights: THREE.Group
@@ -23,8 +26,10 @@ export default class CubeWorld extends World {
         this.experience = experience
         const scene = experience.scene
 
-        scene.background = new THREE.Color(FOG_COLOR)
-        scene.fog = new THREE.Fog(FOG_COLOR, 10, 55)
+        const background = new THREE.Color(FOG_COLOR)
+        const fog = new THREE.Fog(FOG_COLOR, 10, 55)
+        scene.background = background
+        scene.fog = fog
 
 
         /**
@@ -39,8 +44,20 @@ export default class CubeWorld extends World {
         // scene.add(this.floor)
 
 
-        const rock = new RockTunnel()
-        scene.add(rock.mesh)
+        this.rock = new Rock()
+        scene.add(this.rock.mesh)
+
+        this.snowFloor = new SnowFloor(this.experience)
+        scene.add(this.snowFloor.mesh)
+
+
+
+
+
+
+
+
+
 
 
         /**
@@ -51,8 +68,8 @@ export default class CubeWorld extends World {
         this.grid.position.y = 0.001
         scene.add(this.grid)
 
-        
-        
+
+
         /**
          * ROBOT
          */
@@ -99,10 +116,21 @@ export default class CubeWorld extends World {
          */
         const gui = experience.helpers.GUI
         const robotFolder = this.robot.debug(gui)
-        const tunnelFolder = rock.debug(gui)
+        const tunnelFolder = this.rock.debug(gui)
+        this.snowFloor.debug(gui)
 
         robotFolder.add(this.cameraParams, 'followSpeed', 0.5, 20, 0.1).name('cameraFollow')
-        
+
+        const fogFolder = gui.addFolder('fog')
+        // The background matches the fog so distant objects fade into it
+        const fogProxy = { color: `#${fog.color.getHexString()}` }
+        fogFolder.addColor(fogProxy, 'color').onChange((hex: string) => {
+            fog.color.set(hex)
+            background.set(hex)
+        })
+        fogFolder.add(fog, 'near', 0, 100, 0.1)
+        fogFolder.add(fog, 'far', 0, 200, 0.1)
+
     }
 
     update() {
@@ -122,6 +150,10 @@ export default class CubeWorld extends World {
         this.followMove.copy(target).lerp(this.followTarget, 1 - Math.exp(-this.cameraParams.followSpeed * delta)).sub(target)
         target.add(this.followMove)
         camera.instance.position.add(this.followMove)
+
+
+
+        this.snowFloor.update()
     }
 
     dispose() {
