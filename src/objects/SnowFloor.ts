@@ -204,7 +204,12 @@ export default class SnowFloor {
                 instanceIndex.mod(vertices),
                 instanceIndex.div(vertices)
             )
-            this.snowTextureNode.store(indexUV, vec4(1, 0, 0, 0))
+
+            const uv = indexUV.toVec2().div(vertices) // IDK why but i trust brunoo
+            const r = mx_noise_float(uv.mul(50.0))
+                .mul(0.6).add(0.5)
+
+            this.snowTextureNode.store(indexUV, vec4(r, 0, 0, 0))
         })().compute(vertices * vertices)
 
         this.experience.renderer.instance.compute(resetCompute)
