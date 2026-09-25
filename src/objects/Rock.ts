@@ -2,7 +2,8 @@ import * as THREE from 'three/webgpu'
 import {
     uniform, positionGeometry, vec3, sin, cos, smoothstep, mix, abs, pow,
     transformNormalToView, mx_noise_float, mx_fractal_noise_float, vec2, normalize,
-    cross, varying
+    cross, varying, float,
+    max
 } from 'three/tsl'
 import type GUI from 'lil-gui'
 
@@ -46,7 +47,21 @@ export default class RockTunnel {
         dustColor: uniform(new THREE.Color('#7a7369')),
         dustThreshold: uniform(0.75),
         dustStrength: uniform(0.35),
+
+
+
+        // SNOW 
+        snowThickness: uniform(2),
+        snowSlope: uniform(0.35),
+        snowSlopeBlend: uniform(0.3),
+        snowDriftScale: uniform(0.305),
+        snowSoftness: uniform(1),
+        snowColor: uniform(new THREE.Color('#f2f5fa')),
+        snowRoughness: uniform(0.8),
+
     }
+
+
 
 
     private getTheta(p: NodeV2): NodeF {
@@ -71,27 +86,62 @@ export default class RockTunnel {
          */
 
         // Big rock
-        const largeRock = mx_fractal_noise_float(base.mul(u.largeScale), 3)
+        const largeRock = mx_fractal_noise_float(base.mul(u.largeScale), 3).mul(u.largeStrength)
 
         // Sharp rock
         const ridgeCoords = base.mul(vec3(1, u.ridgeStretch, 1)).mul(u.ridgeScale)
-        const sharpRock = pow(abs(mx_noise_float(ridgeCoords)).oneMinus(), u.ridgeSharpness)
+        const sharpRock = pow(abs(mx_noise_float(ridgeCoords)).oneMinus(), u.ridgeSharpness).mul(u.ridgeStrength)
 
         // Small rock
-        const cracks = mx_fractal_noise_float(base.mul(u.detailScale), 3)
+        const cracks = mx_fractal_noise_float(base.mul(u.detailScale), 3).mul(u.detailStrength)
 
-        const height = largeRock.mul(u.largeStrength)
-            .add(sharpRock.mul(u.ridgeStrength))
-            .add(cracks.mul(u.detailStrength))
+        const height = largeRock
+            .add(sharpRock)
+            .add(cracks)
 
-        // Flat floor, wild walls and ceiling
         // const wallMask = smoothstep(u.floorWidth, u.floorWidth.add(u.wallBlend), abs(theta))
         return height//.mul(mix(u.floorAmplitude, u.wallAmplitude, wallMask))
     }
 
-    private tunnelPoint(p: NodeV2): NodeV3 {
+
+    private surface(p: NodeV2) {
+
         const base = this.basePoint(p)
-        return base.add(this.inward(p).mul(this.rockHeight(base, this.getTheta(p))))
+        const rock = this.rockHeight(base, float(0))
+
+        const snow = this.snowHeight(base, p)
+        const height = this.smoothWMax(rock, snow, this.uniforms.snowSoftness)
+
+        return {
+            base, rock, height
+        }
+    }
+
+    smoothWMax(a: any, b: any, k: any) {
+        const h = max(k.sub(abs(a.sub(b))), 0).div(k)
+        return max(a, b).add(h.mul(h).mul(k).mul(0.25))
+    }
+
+    private snowHeight(base: NodeV3, p: NodeV2,) {
+        const u = this.uniforms
+        const largeRock = mx_fractal_noise_float(base.mul(u.largeScale), 3).mul(u.largeStrength)
+
+        const testUp = this.inward(p).y
+        const coverage = smoothstep(u.snowSlope, u.snowSlope.add(u.snowSlopeBlend), testUp)
+
+        const drift = mx_noise_float(base.mul(u.snowDriftScale)).mul(0.5).add(0.5)
+
+        const amount = coverage.mul(drift)
+
+
+        return largeRock.add(mix(float(-1), this.uniforms.snowThickness, amount))
+
+    }
+
+
+    private tunnelPoint(p: NodeV2): NodeV3 {
+        const { base, height } = this.surface(p)
+        return base.add(this.inward(p).mul(height))
     }
 
 
@@ -129,8 +179,13 @@ export default class RockTunnel {
         /**
          * Let's color this
          */
-        const base = this.basePoint(planePosition)
-        const height = varying(this.rockHeight(base, this.getTheta(planePosition)))
+        const surface = this.surface(planePosition)
+        const base = surface.base
+        const height = varying(surface.rock)
+        // How much snow sits on top of the rock (0 = bare rock)
+        const snowDepth = varying(surface.height.sub(surface.rock))
+
+
 
         const grain = mx_fractal_noise_float(base.mul(u.grainScale), 3)
         const tint = mx_noise_float(base.mul(u.tintScale)).mul(0.5).add(0.5)
@@ -140,7 +195,12 @@ export default class RockTunnel {
         rock = mix(rock, rock.mul(u.tintColor), tint.mul(u.tintStrength))
 
         const dust = smoothstep(u.dustThreshold, u.dustThreshold.add(0.2), normal.y)
-        material.colorNode = mix(rock, u.dustColor, dust.mul(u.dustStrength))
+        rock = mix(rock, u.dustColor, dust.mul(u.dustStrength))
+
+
+        const snowMask = smoothstep(0.02, 0.1, snowDepth)
+
+        material.colorNode = mix(rock, u.snowColor, snowMask)
 
 
         this.mesh = new THREE.Mesh(geometry, material)
