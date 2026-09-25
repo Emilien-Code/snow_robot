@@ -8,7 +8,7 @@ import { bloom } from 'three/addons/tsl/display/BloomNode.js'
 import { smaa } from 'three/addons/tsl/display/SMAANode.js'
 import { film } from 'three/addons/tsl/display/FilmNode.js'
 
-type View = 'final' | 'normal' | "ao" | 'bloom' | "default"
+type View = 'final' | 'normal' | "ao" | 'bloom' | "default" | "vignette"
 
 export default class Renderer {
     public instance: THREE.WebGPURenderer
@@ -36,7 +36,7 @@ export default class Renderer {
         saturation: uniform(1.05),
         vignetteStart: uniform(0.35),
         vignetteEnd: uniform(0.85),
-        vignetteStrength: uniform(0.35),
+        vignetteStrength: uniform(0.95),
         grain: uniform(0.08),
     }
 
@@ -159,7 +159,8 @@ export default class Renderer {
             normal: vec4(sceneNormalTexture.rgb, 1),
             ao: vec4(vec3(aoRaw), 1),
             bloom: vec4(bloomPass.rgb, 1),
-            default: fristPass
+            default: fristPass,
+            vignette: vignetted
         }
 
 
@@ -181,7 +182,7 @@ export default class Renderer {
 
     public debug(gui: GUI) {
         const folder = gui.addFolder('postprocessing')
-        folder.add(this.params, 'view', ['final', 'normal', "ao", "bloom", "default"]).onChange((view: View) => this.setView(view))
+        folder.add(this.params, 'view', ['final', 'normal', "ao", "bloom", "default", "vignette"]).onChange((view: View) => this.setView(view))
 
 
         folder.add(this.uniforms.exposure, 'value', 0, 1, 0.01).name('exposure')
@@ -197,6 +198,24 @@ export default class Renderer {
         bloomFolder.add(this.bloomPass.strength, 'value', 0, 2, 0.01).name('strength')
         bloomFolder.add(this.bloomPass.radius, 'value', 0, 1, 0.01).name('radius')
         bloomFolder.add(this.bloomPass.threshold, 'value', 0, 2, 0.01).name('threshold')
+
+        const vignetteFolder = folder.addFolder('vignette')
+        vignetteFolder.add(
+            this.uniforms.vignetteStart,
+            'value',
+            0, 1, 0.01
+        ).name('vignetteStart')
+        vignetteFolder.add(
+            this.uniforms.vignetteEnd,
+            'value',
+            0, 1, 0.01
+        ).name('vignetteEnd')
+        vignetteFolder.add(
+            this.uniforms.vignetteStrength,
+            'value',
+            0, 1, 0.01
+        ).name('vignetteStrength')
+
     }
 
     public resize() {

@@ -1,4 +1,5 @@
 import * as THREE from 'three/webgpu'
+import { Howl } from 'howler'
 import type GUI from 'lil-gui'
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import type Experience from '../Experience'
@@ -33,6 +34,14 @@ export default class Robot {
         sway: 0.6,
     }
 
+    // Engine loop: volume and pitch follow the speed.
+    public soundParams = {
+        maxVolume: 1,
+        minRate: 0.8,
+        maxRate: 1.3,
+        fade: 6,
+    }
+
 
     public stats = { speed: 0, stopTime: 0 }
 
@@ -56,6 +65,8 @@ export default class Robot {
     private yaw = 0
     private pitch = 0
     private roll = 0
+    private speedSound = new Howl({ src: ['/flying_robot_loop.m4a'], format: ['m4a'], loop: true, volume: 0 })
+    private soundLevel = 0
 
     constructor(experience: Experience) {
         const gltf = experience.ressources.items['robot'] as GLTF
@@ -157,8 +168,25 @@ export default class Robot {
         // this.headlight.intensity = this.lightParams.intensity * (1 + Math.sin(elapsed * params.bobSpeed) * this.lightParams.pulse)
 
         this.stats.speed = speed
+        this.updateSound(speed, delta)
 
         this.stats.stopTime = Math.log(10) * params.mass / params.slowDown
+    }
+
+    private updateSound(speed: number, delta: number) {
+        const { soundParams } = this
+        const target = THREE.MathUtils.clamp(speed / this.params.maxSpeed, 0, 1)
+        this.soundLevel += (target - this.soundLevel) * (1 - Math.exp(-soundParams.fade * delta))
+
+
+        const sound = this.speedSound
+        if (this.soundLevel > 0.01) {
+            if (!sound.playing()) sound.play()
+            sound.volume(this.soundLevel * soundParams.maxVolume)
+            sound.rate(THREE.MathUtils.lerp(soundParams.minRate, soundParams.maxRate, this.soundLevel))
+        } else if (sound.playing()) {
+            sound.pause()
+        }
     }
 
     public debug(gui: GUI) {
@@ -174,6 +202,12 @@ export default class Robot {
         movement.add(this.params, 'turnSpeed', 0.5, 20, 0.1)
         movement.add(this.stats, 'speed').decimals(2).listen().disable()
         movement.add(this.stats, 'stopTime').name('stopTime (s)').decimals(2).listen().disable()
+
+        const sound = folder.addFolder('sound')
+        sound.add(this.soundParams, 'maxVolume', 0, 1, 0.01)
+        sound.add(this.soundParams, 'minRate', 0.25, 2, 0.01)
+        sound.add(this.soundParams, 'maxRate', 0.25, 4, 0.01)
+        sound.add(this.soundParams, 'fade', 0.5, 20, 0.1)
 
         const leaning = folder.addFolder('leaning')
         leaning.add(this.params, 'tilt', 0, 0.1, 0.001)
@@ -193,6 +227,7 @@ export default class Robot {
 
     public dispose() {
         this.keyboard.dispose()
+        this.speedSound.unload()
         this.model.traverse((child) => {
             if (!(child instanceof THREE.Mesh)) return
             child.geometry.dispose()

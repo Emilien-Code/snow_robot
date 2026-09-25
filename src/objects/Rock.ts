@@ -3,7 +3,9 @@ import {
     uniform, positionGeometry, vec3, sin, cos, smoothstep, mix, abs, pow,
     transformNormalToView, mx_noise_float, mx_fractal_noise_float, vec2, normalize,
     cross, varying, float,
-    max
+    max,
+    mx_noise_vec3,
+    uv
 } from 'three/tsl'
 import type GUI from 'lil-gui'
 
@@ -173,6 +175,7 @@ export default class RockTunnel {
 
         // Local space normal (reused for the dust), converted to view space for the lighting
         const normal = normalize(cross(px.sub(p0), py.sub(p0)))
+
         material.normalNode = transformNormalToView(normal)
 
 

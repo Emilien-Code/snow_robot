@@ -5,6 +5,7 @@ import Robot from '../objects/Robot'
 import Rock from '../objects/Rock'
 import SnowFloor from '../objects/SnowFloor'
 import Rain from '../objects/Rain'
+import Smoke from '../objects/Smoke'
 const FOG_COLOR = '#ffffff'
 const FLOOR_SIZE = 100
 
@@ -14,7 +15,7 @@ export default class CubeWorld extends World {
     private rock: Rock
     private snowFloor: SnowFloor
     private rain: Rain
-
+    private smoke: Smoke
     private grid: THREE.GridHelper
     private robot: Robot
     private lights: THREE.Group
@@ -22,8 +23,10 @@ export default class CubeWorld extends World {
     private lightOffset = new THREE.Vector3()
     private followTarget = new THREE.Vector3()
     private followMove = new THREE.Vector3()
-    // How tightly the camera sticks to the robot (lower = more floaty lag)
     private cameraParams = { followSpeed: 4 }
+    private windSound = new Howl({ src: ['/ambiance.wav'], format: ['wav'], loop: true, volume: 0.25 })
+    private musicSound = new Howl({ src: ['bo.m4a'], format: ['m4a'], loop: true, volume: 0.25 })
+
 
     constructor(experience: Experience) {
         super()
@@ -48,7 +51,7 @@ export default class CubeWorld extends World {
         // scene.add(this.floor)
 
 
-        this.rock = new Rock()
+        this.rock = new Rock(this.experience)
         scene.add(this.rock.mesh)
 
         this.snowFloor = new SnowFloor(this.experience)
@@ -78,7 +81,6 @@ export default class CubeWorld extends World {
          */
         this.robot = new Robot(this.experience)
         this.robot.bounds.x = this.rock.uniforms.radius.value * 0.75
-        // this.robot.bounds.set(FLOOR_SIZE / 2 - 2, FLOOR_SIZE / 2 - 2)
         scene.add(this.robot.group)
 
 
@@ -90,10 +92,11 @@ export default class CubeWorld extends World {
         scene.add(this.rain.mesh)
 
 
+        /**
+         * SMOKE
+         */
 
-
-
-
+        // this.smoke = new Smoke(this.experience)
 
 
 
@@ -136,7 +139,8 @@ export default class CubeWorld extends World {
         controls.maxDistance = 12
         this.followTarget.copy(controls.target)
 
-
+        this.windSound.play()
+        this.musicSound.play()
 
         /**
          * Debug
@@ -144,7 +148,7 @@ export default class CubeWorld extends World {
         const gui = experience.helpers.GUI
         const robotFolder = this.robot.debug(gui)
         const tunnelFolder = this.rock.debug(gui)
-        
+
         this.experience.renderer.debug(gui)
 
         this.snowFloor.debug(gui)
@@ -175,6 +179,14 @@ export default class CubeWorld extends World {
         lightsFolder.add(this.lightOffset, 'y', 0, 20, 0.1).name('directionalY')
         lightsFolder.add(this.lightOffset, 'z', -20, 20, 0.1).name('directionalZ')
 
+        const soundFolder = gui.addFolder('sound')
+        const soundProxy = {
+            music: this.musicSound.volume(),
+            wind: this.windSound.volume(),
+        }
+        soundFolder.add(soundProxy, 'music', 0, 1, 0.01).onChange((v: number) => this.musicSound.volume(v))
+        soundFolder.add(soundProxy, 'wind', 0, 1, 0.01).onChange((v: number) => this.windSound.volume(v))
+
     }
 
     update() {
@@ -203,6 +215,17 @@ export default class CubeWorld extends World {
 
         this.snowFloor.update()
         this.rain.update(delta, this.robot.group.position)
+
+
+        /**
+         * SMOKE FOLLOWS THE ROBOT
+         */
+
+        // this.smoke.sprite.position.set(this.robot.group.position.x, this.robot.params.hoverHeight, this.robot.group.position.z)
+
+
+
+        // this.smoke.update()
     }
 
     dispose() {

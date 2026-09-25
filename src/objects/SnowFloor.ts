@@ -33,7 +33,7 @@ export default class SnowFloor {
     private experience: Experience
     private params = {
         size: 200,
-        vertices: 512,
+        vertices: 1024,
         elevation: 2,
         normalRepeat: 34,
     }
