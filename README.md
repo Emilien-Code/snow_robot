@@ -40,4 +40,5 @@ src/
 ## Tutorials
 
 - `docs/tunnel-tutorial/README.md` walks through building a rocky TSL tunnel step by step (to replace the grid floor). Solution: `docs/tunnel-tutorial/Tunnel.ts`.
+- `docs/postprocessing-tutorial/README.md` walks through adding post-processing (AO, bloom, color grading, vignette, grain, SMAA) with a TSL `RenderPipeline`. Solution: `docs/postprocessing-tutorial/Renderer.ts`.
 - `docs/headlight-tutorial/README.md` walks through giving the robot its own headlight (`PointLight`). Solution: `docs/headlight-tutorial/Robot.ts`.
