@@ -94,7 +94,6 @@ export default class Robot {
     }
 
     public update(delta: number, elapsed: number, camera: THREE.Camera) {
-        // --- Input direction, relative to the camera, flattened on the ground
         camera.getWorldDirection(this.forward)
         this.forward.y = 0
         this.forward.normalize()

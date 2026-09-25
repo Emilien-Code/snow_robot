@@ -68,7 +68,6 @@ export default class CubeWorld extends World {
          * GRID
          */
         this.grid = new THREE.GridHelper(FLOOR_SIZE, FLOOR_SIZE, '#6b7585', '#40464f')
-        // Slightly above the floor to avoid z-fighting (flickering between two surfaces at the same height)
         this.grid.position.y = 0.001
         scene.add(this.grid)
 
@@ -78,7 +77,8 @@ export default class CubeWorld extends World {
          * ROBOT
          */
         this.robot = new Robot(this.experience)
-        this.robot.bounds.set(FLOOR_SIZE / 2 - 2, FLOOR_SIZE / 2 - 2)
+        this.robot.bounds.x = this.rock.uniforms.radius.value * 0.75
+        // this.robot.bounds.set(FLOOR_SIZE / 2 - 2, FLOOR_SIZE / 2 - 2)
         scene.add(this.robot.group)
 
 
