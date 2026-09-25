@@ -23,8 +23,8 @@ import {
     positionGeometry,
     cameraPosition,
     cross,
+    mrt,
 } from 'three/tsl'
-
 export const RAIN_COLLISION_LAYER = 1
 const RAIN_LAYER = 2
 
@@ -165,6 +165,8 @@ export default class Rain {
             transparent: true,
             depthWrite: false,
         })
+
+        material.mrtNode = mrt({ normal: vec4(0) })
 
         const center = this.positions.element(instanceIndex)
 
