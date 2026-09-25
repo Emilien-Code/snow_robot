@@ -18,6 +18,8 @@ export default class CubeWorld extends World {
     private grid: THREE.GridHelper
     private robot: Robot
     private lights: THREE.Group
+    private directional: THREE.DirectionalLight
+    private lightOffset = new THREE.Vector3()
     private followTarget = new THREE.Vector3()
     private followMove = new THREE.Vector3()
     // How tightly the camera sticks to the robot (lower = more floaty lag)
@@ -102,8 +104,23 @@ export default class CubeWorld extends World {
         this.lights = new THREE.Group()
         const ambient = new THREE.AmbientLight('#f3ede8', 0.25)
         const directional = new THREE.DirectionalLight('#ffe9d0', 1.2)
-        directional.position.set(3, 4, 2)
-        this.lights.add(ambient, directional)
+        this.lightOffset.set(3, 4, 2)
+        directional.position.copy(this.lightOffset)
+
+
+        directional.castShadow = true
+        directional.shadow.mapSize.setScalar(1024)
+        directional.shadow.camera.left = -6
+        directional.shadow.camera.right = 6
+        directional.shadow.camera.top = 6
+        directional.shadow.camera.bottom = -6
+        directional.shadow.camera.near = 0.1
+        directional.shadow.camera.far = 20
+        directional.shadow.bias = -0.0005
+        directional.shadow.normalBias = 0.02
+        this.directional = directional
+
+        this.lights.add(ambient, directional, directional.target)
         scene.add(this.lights)
 
 
@@ -151,9 +168,9 @@ export default class CubeWorld extends World {
         lightsFolder.add(ambient, 'intensity', 0, 3, 0.01).name('ambientIntensity')
         lightsFolder.addColor(lightsProxy, 'directionalColor').onChange((hex: string) => directional.color.set(hex))
         lightsFolder.add(directional, 'intensity', 0, 10, 0.01).name('directionalIntensity')
-        lightsFolder.add(directional.position, 'x', -20, 20, 0.1).name('directionalX')
-        lightsFolder.add(directional.position, 'y', 0, 20, 0.1).name('directionalY')
-        lightsFolder.add(directional.position, 'z', -20, 20, 0.1).name('directionalZ')
+        lightsFolder.add(this.lightOffset, 'x', -20, 20, 0.1).name('directionalX')
+        lightsFolder.add(this.lightOffset, 'y', 0, 20, 0.1).name('directionalY')
+        lightsFolder.add(this.lightOffset, 'z', -20, 20, 0.1).name('directionalZ')
 
     }
 
@@ -164,6 +181,10 @@ export default class CubeWorld extends World {
 
         this.robot.controllable = !camera.params.free
         this.robot.update(delta, elapsed, camera.instance)
+
+        const robotPosition = this.robot.group.position
+        this.directional.target.position.copy(robotPosition)
+        this.directional.position.copy(robotPosition).add(this.lightOffset)
 
         // Free (debug) camera: leave it alone
         if (camera.params.free) return

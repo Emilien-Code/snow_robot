@@ -87,7 +87,9 @@ export default class Robot {
 
         const swap = (material: THREE.Material) => materials[material.name] ?? others
         this.model.traverse((child) => {
-            if (child instanceof THREE.Mesh) child.material = Array.isArray(child.material) ? child.material.map(swap) : swap(child.material)
+            if (!(child instanceof THREE.Mesh)) return
+            child.material = Array.isArray(child.material) ? child.material.map(swap) : swap(child.material)
+            child.castShadow = true
         })
     }
 
