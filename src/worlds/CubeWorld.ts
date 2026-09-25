@@ -104,7 +104,7 @@ export default class CubeWorld extends World {
         this.lights = new THREE.Group()
         const ambient = new THREE.AmbientLight('#f3ede8', 0.25)
         const directional = new THREE.DirectionalLight('#ffe9d0', 1.2)
-        this.lightOffset.set(3, 4, 2)
+        this.lightOffset.set(0, 4, -100)
         directional.position.copy(this.lightOffset)
 
 
@@ -144,6 +144,9 @@ export default class CubeWorld extends World {
         const gui = experience.helpers.GUI
         const robotFolder = this.robot.debug(gui)
         const tunnelFolder = this.rock.debug(gui)
+        
+        this.experience.renderer.debug(gui)
+
         this.snowFloor.debug(gui)
         this.rain.debug(gui)
 
